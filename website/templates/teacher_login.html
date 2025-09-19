@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teacher Login</title>
+  <style>
+    body{
+      font-family: Arial;
+      background: linear-gradient(135deg, #fa709a, #fee140);
+      display:flex; justify-content:center; align-items:center; height:100vh; margin:0;
+    }
+    .login-box{ background:#fff; padding:30px; border-radius:10px; text-align:center; width:300px; box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+    h2{ margin-bottom:20px; color:#333;}
+    input{ width:90%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc;}
+    button{ background:#fa709a; color:#fff; padding:10px 20px; border:0; border-radius:5px; cursor:pointer; margin-right:10px;}
+    button:hover{ background:#fee140; color:#000;}
+    .back-btn{ background:#6c757d;}
+    .back-btn:hover{ background:#5a6268; color:#fff;}
+    .error{ color:red; margin-top:10px;}
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Teacher Login</h2>
+    <input type="email" id="email" placeholder="Enter Email" required>
+    <input type="password" id="password" placeholder="Enter Password" required>
+    <button onclick="login()">Login</button>
+    <button class="back-btn" onclick="goBack()">Back</button>
+    <p class="error" id="errorMsg"></p>
+  </div>
+
+  <script>
+    function goBack(){ window.location.href = '/'; }
+
+    async function login(){
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const err = document.getElementById('errorMsg');
+      err.textContent = '';
+      if(!email || !password){ err.textContent = 'Please fill all fields!'; return; }
+
+      try{
+        const res = await fetch('/api/teacher_login', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if(data.success){
+          window.location.href = '/teacher_dashboard';
+        }else{
+          err.textContent = data.message || 'Login failed';
+        }
+      }catch(e){
+        err.textContent = 'Network error';
+      }
+    }
+  </script>
+</body>
+</html>

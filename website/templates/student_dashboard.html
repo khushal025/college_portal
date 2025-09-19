@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root{
+      --bg:#0f172a; --panel:rgba(255,255,255,.06); --border:rgba(255,255,255,.10);
+      --text:#e5e7eb; --muted:#9ca3af; --accent:#22d3ee; --accent2:#60a5fa;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter,Arial; color:var(--text);
+      background:linear-gradient(135deg,#0b1226,#0f172a); min-height:100vh;
+    }
+    .header{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:18px 20px; background:rgba(2,6,23,.55); border-bottom:1px solid var(--border);
+      backdrop-filter:blur(8px); position:sticky; top:0;
+    }
+    .btn{border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600}
+    .btn-outline{background:transparent; color:#fca5a5; border:1px solid #ef4444}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#081224}
+    .main{max-width:1200px; margin:0 auto; padding:24px 16px}
+
+    .panel{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px;}
+    .title{font-size:16px; color:#cbd5e1; margin:2px 0 12px; font-weight:700}
+    .row{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed var(--border)}
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+    .label{color:var(--muted); font-weight:600} .value{font-weight:700}
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+    th{ color:#cbd5e1; font-size:14px; }
+    .table-wrap{ margin-top:12px; }
+
+    /* Hamburger & slide menu */
+    .hamburger{position:fixed; top:24px; right:24px; z-index:1000; background:#7c3aed; border:none; padding:12px; border-radius:8px; cursor:pointer; transition:.3s}
+    .hamburger:hover{background:#6d28d9; transform:scale(1.05)} .hamburger .line{width:20px; height:2px; background:#fff; margin:4px 0}
+    .slide-menu{position:fixed; top:0; right:-300px; width:280px; height:100vh; background:rgba(15,23,42,.95);
+      backdrop-filter:blur(10px); border-left:1px solid var(--border); transition:right .3s; z-index:999; padding-top:80px}
+    .slide-menu.active{right:0}
+    .menu-section{padding:16px 20px; border-bottom:1px solid var(--border)}
+    .menu-title{font-size:14px; font-weight:700; color:#94a3b8; margin-bottom:12px; letter-spacing:.4px}
+    .menu-item{display:block; width:100%; text-align:left; padding:10px 8px; background:none; border:none; color:#fff; border-radius:8px; cursor:pointer}
+    .menu-item:hover{background:rgba(124,58,237,.18); color:#c4b5fd}
+
+    /* Attendance overview */
+    .overview{display:grid; grid-template-columns:360px 1fr; gap:16px}
+    .donut-wrap{display:flex; justify-content:center; align-items:center; height:260px}
+    .bar-list{display:flex; flex-direction:column; gap:12px}
+    .bar{display:flex; align-items:center; gap:12px}
+    .bar label{min-width:220px; color:#9ca3af; font-weight:700; font-size:14px}
+    .track{flex:1; height:10px; background:rgba(255,255,255,.08); border-radius:999px; position:relative; overflow:hidden}
+    .fill{position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(90deg,var(--accent2),var(--accent)); border-radius:999px}
+    .pct{width:56px; text-align:right; color:#cbd5e1; font-weight:700}
+    @media(max-width:1000px){.overview{grid-template-columns:1fr}}
+    .hidden{display:none !important;}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <button class="btn btn-outline" onclick="location.href='/'">← Back</button>
+    <h2 style="margin:0; font-size:18px;">Welcome {{ student['student_name'] if student else 'Student' }}</h2>
+    <button class="btn btn-primary" onclick="location.href='/logout'">Logout</button>
+  </div>
+
+  <!-- Hamburger -->
+  <button class="hamburger" onclick="toggleSlideMenu()"><div class="line"></div><div class="line"></div><div class="line"></div></button>
+
+  <!-- Slide Menu (Documents removed) -->
+  <div class="slide-menu" id="slideMenu">
+    <div class="menu-section">
+      <div class="menu-title">Navigation</div>
+      <button class="menu-item" onclick="switchTo('attendance')">📅 Attendance</button>
+      <button class="menu-item" onclick="switchTo('profile')">👤 Profile</button>
+      <button class="menu-item" onclick="switchTo('results')">📊 Results</button>
+    </div>
+    <div class="menu-section">
+      <div class="menu-title">Quick Actions</div>
+      <button class="menu-item" onclick="downloadResults()">⬇️ Download Results</button>
+      <button class="menu-item" onclick="contactSupport()">💬 Contact Support</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- ATTENDANCE (default visible) -->
+    <section id="secAttendance" class="panel">
+      <div class="title">Attendance Overview</div>
+      <div class="overview">
+        <div class="panel">
+          <div class="title">Overall Attendance</div>
+          <div class="donut-wrap"><canvas id="donut"></canvas></div>
+          <div style="color:#9ca3af; font-size:13px">Source: attendance.total_attendance</div>
+        </div>
+        <div class="panel">
+          <div class="title">By Subject</div>
+          <div class="bar-list" id="attBars">
+            {% set att = attendance or {} %}
+            {% for k,label in [('OOPUI','OOPUI'), ('cloud_comp','Cloud Computing'), ('bi','BI'), ('foai','FOAI'), ('se','SE'), ('java_script_lab','JS Lab')] %}
+            {% set v = att[k] if att and att[k] else 0 %}
+            <div class="bar" data-val="{{ v }}">
+              <label>{{ label }}</label>
+              <div class="track"><div class="fill" style="width: {{ v }}%;"></div></div>
+              <div class="pct">{{ v }}%</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILE (hidden by default) -->
+    <section id="secProfile" class="panel hidden">
+      <div class="title">Profile</div>
+      {% if student %}
+      <div class="grid2">
+        <div class="panel">
+          <div class="row"><span class="label">Name</span><span class="value">{{ student['student_name'] }}</span></div>
+          <div class="row"><span class="label">Roll No</span><span class="value">{{ student['roll_no'] }}</span></div>
+          <div class="row"><span class="label">Email</span><span class="value">{{ student['email'] }}</span></div>
+        </div>
+        <div class="panel">
+          <div class="row"><span class="label">Father Name</span><span class="value">{{ student['father_name'] }}</span></div>
+          <div class="row"><span class="label">Course</span><span class="value">{{ student['course'] }}</span></div>
+          <div class="row"><span class="label">Semester</span><span class="value">{{ student['semester'] }}</span></div>
+        </div>
+      </div>
+      {% else %}<p class="label">No profile data available</p>{% endif %}
+    </section>
+
+    <!-- RESULTS (hidden by default) -->
+    <section id="secResults" class="panel hidden">
+      <div class="title">Results</div>
+      <div class="grid2">
+        <!-- LEFT: SGPA + subject list under it -->
+        <div class="panel">
+          <div class="row">
+            <span class="label">SGPA</span>
+            <span class="value">{{ results['sgpa'] if results and results['sgpa'] else 'N/A' }}</span>
+          </div>
+          {% set r = results or {} %}
+          <div class="row"><span class="label">OOPUI</span><span class="value">{{ r['OOPUI'] if r and r['OOPUI'] else 'N/A' }}</span></div>
+          <div class="row"><span class="label">Cloud</span><span class="value">{{ r['cloud_comp'] if r and r['cloud_comp'] else 'N/A' }}</span></div>
+          <div class="row"><span class="label">BI</span><span class="value">{{ r['bi'] if r and r['bi'] else 'N/A' }}</span></div>
+          <div class="row"><span class="label">FOAI</span><span class="value">{{ r['foai'] if r and r['foai'] else 'N/A' }}</span></div>
+          <div class="row"><span class="label">SE</span><span class="value">{{ r['se'] if r and r['se'] else 'N/A' }}</span></div>
+          <div class="row"><span class="label">JS Lab</span><span class="value">{{ r['java_script_lab'] if r and r['java_script_lab'] else 'N/A' }}</span></div>
+        </div>
+
+        <!-- RIGHT: Bar chart -->
+        <div class="panel"><canvas id="resultsBar" height="160"></canvas></div>
+      </div>
+
+      <!-- Optional full table (kept minimal; can remove if not needed) -->
+      <div class="panel table-wrap">
+        <table>
+          <thead><tr><th>Subject</th><th>Marks</th></tr></thead>
+          <tbody>
+            {% for key, label in [
+              ('OOPUI','OOPUI'),
+              ('cloud_comp','Cloud Computing'),
+              ('bi','BI'),
+              ('foai','FOAI'),
+              ('se','SE'),
+              ('java_script_lab','JS Lab')
+            ] %}
+              <tr>
+                <td>{{ label }}</td>
+                <td class="value">{{ r[key] if r and r[key] else 'N/A' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Slide menu controls
+    function toggleSlideMenu(){ document.getElementById('slideMenu').classList.toggle('active'); }
+    document.addEventListener('click', (e)=>{
+      const sm=document.getElementById('slideMenu'), hb=document.querySelector('.hamburger');
+      if(sm && !sm.contains(e.target) && hb && !hb.contains(e.target)) sm.classList.remove('active');
+    });
+    function downloadResults(){ alert('Download coming soon'); }
+    function contactSupport(){ alert('Support: support@mvn.edu'); }
+
+    // Show one section at a time
+    let donutChart=null, resultsChart=null;
+    function switchTo(key){
+      const sec = {attendance:'secAttendance', profile:'secProfile', results:'secResults'};
+      for(const k in sec){ document.getElementById(sec[k]).classList.toggle('hidden', k!==key); }
+      document.getElementById('slideMenu').classList.remove('active');
+
+      if(key==='attendance'){ initDonut(); destroyResults(); }
+      else if(key==='results'){ initResults(); destroyDonut(); }
+      else { destroyDonut(); destroyResults(); }
+
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    // Charts
+    function initDonut(){
+      if(donutChart) return;
+      const total = Number({{ (attendance['total_attendance'] if attendance and attendance['total_attendance'] else 0) | safe }});
+      donutChart = new Chart(document.getElementById('donut'), {
+        type:'doughnut',
+        data:{labels:['Present','Absent'],datasets:[{data:[total, Math.max(0,100-total)],backgroundColor:['#22d3ee','#1f2937'],borderWidth:0}]},
+        options:{cutout:'70%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:600}}
+      });
+    }
+    function destroyDonut(){ if(donutChart){ donutChart.destroy(); donutChart=null; } }
+
+    function initResults(){
+      if(resultsChart) return;
+      const vals = [
+        Number({{ (results['OOPUI'] if results and results['OOPUI'] else 0) | safe }}),
+        Number({{ (results['cloud_comp'] if results and results['cloud_comp'] else 0) | safe }}),
+        Number({{ (results['bi'] if results and results['bi'] else 0) | safe }}),
+        Number({{ (results['foai'] if results and results['foai'] else 0) | safe }}),
+        Number({{ (results['se'] if results and results['se'] else 0) | safe }}),
+        Number({{ (results['java_script_lab'] if results and results['java_script_lab'] else 0) | safe }})
+      ];
+      const ctx=document.getElementById('resultsBar');
+      if(!ctx) return;
+      resultsChart = new Chart(ctx,{
+        type:'bar',
+        data:{labels:['OOPUI','Cloud','BI','FOAI','SE','JS Lab'],
+          datasets:[{data:vals, backgroundColor:'#60a5fa', borderRadius:8, borderSkipped:false}]},
+        options:{plugins:{legend:{display:false}},
+          scales:{x:{grid:{display:false},ticks:{color:'#cbd5e1'}},
+                  y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.08)'},ticks:{color:'#9ca3af'}}}}
+      });
+    }
+    function destroyResults(){ if(resultsChart){ resultsChart.destroy(); resultsChart=null; } }
+
+    // Default: Attendance
+    initDonut();
+  </script>
+</body>
+</html>

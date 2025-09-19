@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MVN University Portal</title>
+  <link rel="preload" as="image" href="{{ url_for('static', filename='photos/background.jpeg') }}">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; }
+    body{
+      min-height:100vh;
+      background: url('{{ url_for('static', filename='photos/background.jpeg') }}') center/cover no-repeat fixed;
+      background-color: rgba(0,0,0,0.35);
+      background-blend-mode: overlay;
+      font-family: Arial, Helvetica, sans-serif;
+      color:#fff;
+    }
+    .container{ position:relative; max-width:1200px; margin:0 auto; padding:32px 16px; height:100vh; }
+
+    /* Left hero text */
+    .hero{ max-width:720px; margin-top:10%; padding:16px; text-shadow:0 2px 8px rgba(0,0,0,0.5); }
+    .hero h1{ font-size:56px; margin-bottom:8px; }
+    .hero p{ color:#e2e8f0; font-size:22px; }
+
+    /* Right-side glass login card */
+    .side-card{
+      position:absolute; top:12%; right:3%; width:420px;
+      background: rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.25);
+      border-radius:16px; padding:22px 22px 26px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .brand{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+    .brand img{ width:44px; height:44px; object-fit:cover; border-radius:8px; }
+    .brand h2{ font-size:22px; letter-spacing:.3px; margin:0; }
+    .subtitle{ color:#dbeafe; opacity:.95; margin:6px 0 10px; }
+    .divider{ height:1px; background:rgba(255,255,255,0.25); margin:10px 0 16px; border-radius:1px; }
+
+    /* Tabs */
+    .tabs{ display:flex; gap:8px; margin-bottom:14px; }
+    .tab{
+      flex:1; text-align:center; padding:10px 12px; cursor:pointer; font-weight:700;
+      border-radius:10px; border:1px solid rgba(255,255,255,0.25);
+      color:#fff; background: rgba(255,255,255,0.08);
+    }
+    .tab.active{ background: linear-gradient(135deg,#22d3ee,#06b6d4); border-color: transparent; }
+
+    /* Form */
+    .form-group{ margin-bottom:12px; }
+    label{ display:block; margin-bottom:6px; color:#e5e7eb; font-size:14px; }
+    input{
+      width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.10); color:#fff; outline:none;
+    }
+    input::placeholder{ color:#e5e7eb; opacity:.8; }
+    .actions{ display:flex; gap:10px; margin-top:10px; }
+    .btn{
+      flex:1; border:0; border-radius:10px; padding:12px 14px; font-weight:800; cursor:pointer; color:#0b1020;
+    }
+    .btn-student{ background: linear-gradient(135deg,#22d3ee,#06b6d4); }
+    .btn-teacher{ background: linear-gradient(135deg,#fb7185,#fbbf24); }
+    .error{ color:#ffdddd; font-size:13px; min-height:18px; margin-top:6px; }
+
+    @media (max-width:900px){ .side-card{ position:static; width:100%; margin-top:24px; } .container{ height:auto; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left hero -->
+    <section class="hero">
+      <h1>Welcome to MVN University</h1>
+      <p>Student & Teacher Portal </p>
+      <p> SOET school of engineering and technology </p>
+    </section>
+
+    <!-- Right: Login -->
+    <aside class="side-card">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='photos/logo.jpeg') }}" alt="MVN Logo">
+        <h2><b>MVN UNIVERSITY</b></h2>
+      </div>
+      <p class="subtitle">LOGIN HERE TO EXPLORE</p>
+      <div class="divider"></div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button id="tabStudent" class="tab active" onclick="switchTab('student')">Student</button>
+        <button id="tabTeacher" class="tab" onclick="switchTab('teacher')">Teacher</button>
+      </div>
+
+      <!-- Student form -->
+      <form id="formStudent" onsubmit="return studentLogin(event)">
+        <div class="form-group">
+          <label for="s_roll">Roll Number</label>
+          <input id="s_roll" type="text" placeholder="enter your Roll number" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="s_pass">Password</label>
+          <input id="s_pass" type="password" placeholder="Password" autocomplete="current-password">
+        </div>
+        <div class="actions">
+          <button class="btn btn-student" type="submit">Login as Student</button>
+        </div>
+        <div id="s_err" class="error"></div>
+      </form>
+
+      <!-- Teacher form -->
+      <form id="formTeacher" onsubmit="return teacherLogin(event)" style="display:none;">
+        <div class="form-group">
+          <label for="t_email">Email</label>
+          <input id="t_email" type="email" placeholder="Enter you Gmail" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="t_pass">Password</label>
+          <input id="t_pass" type="password" placeholder="Password" autocomplete="current-password">
+        </div>
+        <div class="actions">
+          <button class="btn btn-teacher" type="submit">Login as Teacher</button>
+        </div>
+        <div id="t_err" class="error"></div>
+      </form>
+    </aside>
+  </div>
+
+  <script>
+    function switchTab(which){
+      const sTab = document.getElementById('tabStudent');
+      const tTab = document.getElementById('tabTeacher');
+      const sForm = document.getElementById('formStudent');
+      const tForm = document.getElementById('formTeacher');
+      if(which==='student'){
+        sTab.classList.add('active'); tTab.classList.remove('active');
+        sForm.style.display='block'; tForm.style.display='none';
+      }else{
+        tTab.classList.add('active'); sTab.classList.remove('active');
+        tForm.style.display='block'; sForm.style.display='none';
+      }
+    }
+
+    async function studentLogin(e){
+      e.preventDefault();
+      const roll_no = document.getElementById('s_roll').value.trim();
+      const password = document.getElementById('s_pass').value;
+      const err = document.getElementById('s_err'); err.textContent='';
+      if(!roll_no || !password){ err.textContent='Please fill all fields'; return false; }
+      try{
+        const res = await fetch('/api/student_login', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ roll_no, password })
+        });
+        const data = await res.json();
+        if(data.success){ location.href='/student_dashboard'; }
+        else { err.textContent = data.message || 'Login failed'; }
+      }catch(ex){ err.textContent='Network error'; }
+      return false;
+    }
+
+    async function teacherLogin(e){
+      e.preventDefault();
+      const email = document.getElementById('t_email').value.trim();
+      const password = document.getElementById('t_pass').value;
+      const err = document.getElementById('t_err'); err.textContent='';
+      if(!email || !password){ err.textContent='Please fill all fields'; return false; }
+      try{
+        const res = await fetch('/api/teacher_login', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if(data.success){ location.href='/teacher_dashboard'; }
+        else { err.textContent = data.message || 'Login failed'; }
+      }catch(ex){ err.textContent='Network error'; }
+      return false;
+    }
+  </script>
+</body>
+</html>
