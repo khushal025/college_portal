@@ -1,0 +1,7 @@
+flask
+flask-cors
+gunicorn
+mysql-connector-python
+python-dotenv
+pandas
+werkzeug
