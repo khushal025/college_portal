@@ -28,32 +28,32 @@
     <p class="error" id="errorMsg"></p>
   </div>
 
-  <script>
-    function goBack(){ window.location.href = '/'; }
+<script>
+function goBack(){ window.location.href = '/'; }
 
-    async function login(){
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const err = document.getElementById('errorMsg');
-      err.textContent = '';
-      if(!email || !password){ err.textContent = 'Please fill all fields!'; return; }
+async function login(){
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const err = document.getElementById('errorMsg');
+  err.textContent = '';
+  if(!email || !password){ err.textContent = 'Please fill all fields!'; return; }
 
-      try{
-        const res = await fetch('/api/teacher_login', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-        if(data.success){
-          window.location.href = '/teacher_dashboard';
-        }else{
-          err.textContent = data.message || 'Login failed';
-        }
-      }catch(e){
-        err.textContent = 'Network error';
-      }
+  try{
+    const res = await fetch('/api/teacher_login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if(data.success){
+      window.location.href = '/teacher_dashboard';
+    }else{
+      err.textContent = data.message || 'Login failed';
     }
-  </script>
+  }catch(e){
+    err.textContent = 'Network error';
+  }
+}
+</script>
 </body>
 </html>
