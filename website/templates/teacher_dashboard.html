@@ -36,9 +36,6 @@
     .dashboard-card{background:rgba(255,255,255,.08);border-radius:12px;padding:24px;border:1px solid rgba(255,255,255,.1)}
     .card-title{font-size:18px;font-weight:600;margin-bottom:16px;color:#e2e8f0}
     .no-data{color:#94a3b8;font-style:italic;text-align:center;padding:2rem}
-    .btn-group{display:flex;gap:12px;margin-top:16px}
-    .reload-btn{background:#06b6d4;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px}
-    .save-btn{background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px}
     @media(max-width:768px){.dashboard-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -48,52 +45,17 @@
     <h1>🎓 Hello Prof. {{ teacher_name }}</h1>
   </div>
 
-  <button class="hamburger" onclick="toggleSlideMenu()"><div class="line"></div><div class="line"></div><div class="line"></div></button>
-
-  <div class="slide-menu" id="slideMenu">
-    <div class="menu-section">
-      <div class="menu-title">Upload Options</div>
-      <button class="menu-item" onclick="showUploadAttendance()">📊 Upload Attendance</button>
-      <button class="menu-item" onclick="showUploadResults()">📋 Upload Results</button>
-    </div>
-    <div class="menu-section">
-      <div class="menu-title">Quick Actions</div>
-      <button class="menu-item" onclick="generateReports()">📈 Generate Reports</button>
-      <button class="menu-item" onclick="manageStudents()">👥 Manage Students</button>
-    </div>
-  </div>
-
   <div class="main-content">
     <div class="welcome-section">
-      <h2 style="text-align:center;">Hello {{ teacher_name }}</h2>
-      <p style="text-align:center;">{{ teacher_email }}</p>
-      <p style="text-align:center;">Secure portal for teachers to manage students, attendance and results</p>
+      <h2>Hello {{ teacher_name }}</h2>
+      <p>{{ teacher_email }}</p>
+      <p>Secure portal for teachers to view student attendance and results</p>
     </div>
 
     <div class="search-section">
-      <h3 style="color:#e2e8f0;margin-bottom:16px;">🔍 Search Student</h3>
+      <h3>🔍 Search Student</h3>
       <input type="text" id="rollNoSearch" class="search-input" placeholder="Enter student Roll No">
       <button class="load-btn" onclick="loadStudent()">Search</button>
-    </div>
-
-    <div class="upload-section" id="uploadSection" style="display:none;">
-      <div id="attendanceUpload" style="display:none;">
-        <h3>📊 Upload Attendance (.csv/.xlsx)</h3>
-        <div class="file-upload">
-          <input type="file" class="file-input" id="attendanceFile" accept=".csv,.xlsx,.xls">
-          <button class="upload-btn" onclick="uploadAttendance()">Upload Attendance</button>
-        </div>
-        <div id="uploadResult" style="margin-top:10px;"></div>
-      </div>
-
-      <div id="resultsUpload" style="display:none;">
-        <h3>📋 Upload Results (.csv/.xlsx)</h3>
-        <div class="file-upload">
-          <input type="file" class="file-input" id="resultsFile" accept=".csv,.xlsx,.xls">
-          <button class="upload-btn" onclick="uploadResults()">Upload Results</button>
-        </div>
-        <div id="resultsUploadResult" style="margin-top:10px;"></div>
-      </div>
     </div>
 
     <div class="dashboard-grid">
@@ -101,10 +63,6 @@
         <h3 class="card-title">👤 Profile</h3>
         <div id="profileContent">
           <p class="no-data">No student loaded</p>
-          <div class="btn-group">
-            <button class="reload-btn" onclick="reloadProfile()">Reload</button>
-            <button class="save-btn">Save Changes</button>
-          </div>
         </div>
       </div>
 
@@ -112,10 +70,6 @@
         <h3 class="card-title">📊 Results</h3>
         <div id="resultsContent">
           <p class="no-data">No student loaded</p>
-          <div class="btn-group">
-            <button class="reload-btn" onclick="reloadResults()">Reload</button>
-            <button class="save-btn">Save Results</button>
-          </div>
         </div>
       </div>
 
@@ -123,33 +77,15 @@
         <h3 class="card-title">📅 Attendance</h3>
         <div id="attendanceContent">
           <p class="no-data">No student loaded</p>
-          <div class="btn-group">
-            <button class="reload-btn" onclick="reloadAttendance()">Reload</button>
-            <button class="save-btn" onclick="saveAttendanceChanges()">Save Changes</button>
-          </div>
         </div>
       </div>
     </div>
   </div>
 
 <script>
-  let currentStudentRoll = null;
+let currentStudentRoll = null;
 
-  function toggleSlideMenu(){ document.getElementById('slideMenu').classList.toggle('active'); }
-  function showUploadAttendance(){
-    document.getElementById('uploadSection').style.display='block';
-    document.getElementById('attendanceUpload').style.display='block';
-    document.getElementById('resultsUpload').style.display='none';
-    document.getElementById('slideMenu').classList.remove('active');
-  }
-  function showUploadResults(){
-    document.getElementById('uploadSection').style.display='block';
-    document.getElementById('resultsUpload').style.display='block';
-    document.getElementById('attendanceUpload').style.display='none';
-    document.getElementById('slideMenu').classList.remove('active');
-  }
-
-  async function loadStudent(){
+async function loadStudent(){
     const rollNo = document.getElementById('rollNoSearch').value.trim();
     if(!rollNo){ alert('Please enter roll number!'); return; }
     currentStudentRoll = rollNo;
@@ -159,150 +95,37 @@
       if(out.success){ displayStudentData(out.data); }
       else{ alert('Student not found!'); }
     }catch(e){ alert('Error loading student data!'); }
-  }
+}
 
-  function displayStudentData(data){
+function displayStudentData(data){
     const { student, results, attendance } = data;
+
     if(student){
-      document.getElementById('profileContent').innerHTML = `
-        <div style="text-align:left;">
-          <div style="margin-bottom:10px;"><strong>Name:</strong>
-            <input type="text" id="edit_name" value="${student.student_name||''}" style="background:rgba(255,255,255,.1);border:1px solid #ccc;padding:5px;border-radius:4px;color:#fff;width:200px;">
-          </div>
-          <div style="margin-bottom:10px;"><strong>Roll No:</strong> ${student.roll_no||'N/A'} (Cannot edit)</div>
-          <div style="margin-bottom:10px;"><strong>Father Name:</strong>
-            <input type="text" id="edit_father" value="${student.father_name||''}" style="background:rgba(255,255,255,.1);border:1px solid #ccc;padding:5px;border-radius:4px;color:#fff;width:200px;">
-          </div>
-          <div style="margin-bottom:10px;"><strong>Course:</strong>
-            <input type="text" id="edit_course" value="${student.course||''}" style="background:rgba(255,255,255,.1);border:1px solid #ccc;padding:5px;border-radius:4px;color:#fff;width:200px;">
-          </div>
-          <div style="margin-bottom:10px;"><strong>Semester:</strong>
-            <input type="text" id="edit_semester" value="${student.semester||''}" style="background:rgba(255,255,255,.1);border:1px solid #ccc;padding:5px;border-radius:4px;color:#fff;width:200px;">
-          </div>
-          <div style="margin-bottom:10px;"><strong>Email:</strong>
-            <input type="text" id="edit_email" value="${student.email||''}" style="background:rgba(255,255,255,.1);border:1px solid #ccc;padding:5px;border-radius:4px;color:#fff;width:200px;">
-          </div>
-          <div class="btn-group">
-            <button class="reload-btn" onclick="reloadProfile()">Reload</button>
-            <button class="save-btn" onclick="saveProfileChanges('${student.roll_no}')">Save Changes</button>
-          </div>
-        </div>`;
-    }
-    if(results){
-      let html = '<div style="text-align:left;">';
-      for(const [k,v] of Object.entries(results)){
-        if(['roll_no','student_name','father_name'].includes(k)) continue;
-        html += `<p><strong>${k}:</strong> ${v}</p>`;
+      let profileHTML = '';
+      for(const [key,val] of Object.entries(student)){
+        profileHTML += `<p><strong>${key}:</strong> ${val}</p>`;
       }
-      html += `<div class="btn-group"><button class="reload-btn" onclick="reloadResults()">Reload</button>
-               <button class="save-btn">Save Results</button></div></div>`;
-      document.getElementById('resultsContent').innerHTML = html;
+      document.getElementById('profileContent').innerHTML = profileHTML;
     }
-    const att = attendance || {};
-    document.getElementById('attendanceContent').innerHTML = `
-      <div style="text-align:left;">
-        ${['OOPUI','cloud_comp','bi','foai','se','java_script_lab','total_attendance'].map(id=>{
-          const label = ({OOPUI:'OOPUI',cloud_comp:'Cloud Comp',bi:'BI',foai:'FOAI',se:'SE',java_script_lab:'JS Lab',total_attendance:'Total'})[id];
-          const val = (att[id]||0);
-          return `<div style="margin-bottom:8px;"><strong>${label}:</strong>
-            <input type="number" id="att_${id}" value="${val}" style="background:rgba(255,255,255,.1);border:1px solid #ccc;padding:4px;border-radius:4px;color:#fff;width:80px;"></div>`;
-        }).join('')}
-        <div class="btn-group">
-          <button class="reload-btn" onclick="reloadAttendance()">Reload</button>
-          <button class="save-btn" onclick="saveAttendanceChanges()">Save Changes</button>
-        </div>
-      </div>`;
-  }
 
-  async function saveProfileChanges(rollNo){
-    const payload = {
-      roll_no: rollNo,
-      student_name: document.getElementById('edit_name').value,
-      father_name: document.getElementById('edit_father').value,
-      course: document.getElementById('edit_course').value,
-      semester: document.getElementById('edit_semester').value,
-      email: document.getElementById('edit_email').value
-    };
-    try{
-      const res = await fetch('/update_student_profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const out = await res.json();
-      alert(out.success ? 'Profile updated' : ('Update failed: '+(out.message||'')));
-      if(out.success) loadStudent();
-    }catch(e){ alert('Error saving profile'); }
-  }
-
-  async function saveAttendanceChanges(){
-    if(!currentStudentRoll){ alert('Please load a student first!'); return; }
-    const get = id => document.getElementById('att_'+id).value || 0;
-    const payload = {
-      roll_no: currentStudentRoll,
-      OOPUI: get('OOPUI'),
-      cloud_comp: get('cloud_comp'),
-      bi: get('bi'),
-      foai: get('foai'),
-      se: get('se'),
-      java_script_lab: get('java_script_lab'),
-      total_attendance: get('total_attendance')
-    };
-    try{
-      const res = await fetch('/update_student_attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const out = await res.json();
-      alert(out.success ? 'Attendance updated' : ('Update failed: '+(out.message||'')));
-      if(out.success) loadStudent();
-    }catch(e){ alert('Error saving attendance'); }
-  }
-
-  // CRITICAL: use files, do not set Content-Type manually
-  async function uploadAttendance(){
-    const input = document.getElementById('attendanceFile');
-    if(!input || input.files.length===0){
-      document.getElementById('uploadResult').innerHTML = '<p style="color:#e74c3c;">Please select a file!</p>'; return;
+    if(results){
+      let resultsHTML = '';
+      for(const [key,val] of Object.entries(results)){
+        if(['roll_no','student_name','father_name'].includes(key)) continue;
+        resultsHTML += `<p><strong>${key}:</strong> ${val}</p>`;
+      }
+      document.getElementById('resultsContent').innerHTML = resultsHTML;
     }
-    const fd = new FormData();
-    fd.append('file', input.files);  // [21]
-    try{
-      const res = await fetch('/upload_attendance',{method:'POST',body:fd});  // [2]
-      const out = await res.json();
-      document.getElementById('uploadResult').innerHTML = out.success
-        ? `<p style="color:#27ae60;">Attendance uploaded. Inserted: ${out.summary.inserted}, Updated: ${out.summary.updated}, Skipped: ${out.summary.skipped}</p>`
-        : `<p style="color:#e74c3c;">${out.message||'Failed'}</p>`;
-    }catch(e){
-      document.getElementById('uploadResult').innerHTML = '<p style="color:#e74c3c;">Upload failed!</p>';
-    }
-  }
 
-  async function uploadResults(){
-    const input = document.getElementById('resultsFile');
-    if(!input || input.files.length===0){
-      document.getElementById('resultsUploadResult').innerHTML = '<p style="color:#e74c3c;">Please select a file!</p>'; return;
+    if(attendance){
+      let attHTML = '';
+      for(const [key,val] of Object.entries(attendance)){
+        if(key==='roll_no') continue;
+        attHTML += `<p><strong>${key}:</strong> ${val}</p>`;
+      }
+      document.getElementById('attendanceContent').innerHTML = attHTML;
     }
-    const fd = new FormData();
-    fd.append('file', input.files);  // [21]
-    try{
-      const res = await fetch('/upload_results',{method:'POST',body:fd});  // [2]
-      const out = await res.json();
-      document.getElementById('resultsUploadResult').innerHTML = out.success
-        ? `<p style="color:#27ae60;">Results uploaded. Inserted: ${out.summary.inserted}, Updated: ${out.summary.updated}, Skipped: ${out.summary.skipped}</p>`
-        : `<p style="color:#e74c3c;">${out.message||'Failed'}</p>`;
-    }catch(e){
-      document.getElementById('resultsUploadResult').innerHTML = '<p style="color:#e74c3c;">Upload failed!</p>';
-    }
-  }
-
-  function reloadProfile(){ loadStudent(); }
-  function reloadResults(){ loadStudent(); }
-  function reloadAttendance(){ loadStudent(); }
-
-  function generateReports(){ alert('Generate Reports feature coming soon!'); }
-  function manageStudents(){ alert('Manage Students feature coming soon!'); }
-
-  document.addEventListener('click', (e)=>{
-    const slideMenu = document.getElementById('slideMenu');
-    const hamburger = document.querySelector('.hamburger');
-    if (!slideMenu.contains(e.target) && !hamburger.contains(e.target)) {
-      slideMenu.classList.remove('active');
-    }
-  });
+}
 </script>
 </body>
 </html>
