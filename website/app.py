@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 import os
@@ -21,14 +20,21 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Database connection
-db = mysql.connector.connect(
-    host=os.getenv("DB_HOST"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASS"),
-    database=os.getenv("DB_NAME")
-)
-cursor = db.cursor(dictionary=True)
+# ✅ Safe database connection with error handling
+try:
+    db = mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),   # changed from DB_PASS → DB_PASSWORD
+        database=os.getenv("DB_NAME"),
+        port=os.getenv("DB_PORT", 3306)
+    )
+    cursor = db.cursor(dictionary=True)
+    print("✅ Database connected successfully!")
+except mysql.connector.Error as e:
+    print(f"❌ Database connection failed: {e}")
+    db = None
+    cursor = None
 
 # Helper: allowed file types
 def allowed_file(filename):
@@ -36,21 +42,22 @@ def allowed_file(filename):
 
 # ====== ROUTES ======
 
-# Root route
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Teacher dashboard (read-only)
 @app.route('/teacher')
 def teacher_dashboard():
-    cursor.execute("SELECT * FROM students")  # Example table
+    if not cursor:
+        return "Database not connected!"
+    cursor.execute("SELECT * FROM students")
     students = cursor.fetchall()
     return render_template('teacher.html', students=students)
 
-# Student login
 @app.route('/student', methods=['GET', 'POST'])
 def student_login():
+    if not cursor:
+        return "Database not connected!"
     if request.method == 'POST':
         roll_no = request.form.get('roll_no')
         cursor.execute("SELECT * FROM students WHERE roll_no=%s", (roll_no,))
@@ -62,7 +69,6 @@ def student_login():
             return redirect(url_for('student_login'))
     return render_template('student_login.html')
 
-# Excel Upload (Attendance / Results)
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
@@ -78,14 +84,12 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
 
-            # Read excel and update DB (example: students table)
             try:
                 if filename.endswith(('xlsx', 'xls')):
                     df = pd.read_excel(filepath)
                 else:
                     df = pd.read_csv(filepath)
 
-                # Example: insert/update data into DB
                 for _, row in df.iterrows():
                     cursor.execute("""
                         INSERT INTO students (roll_no, name, marks)
@@ -100,6 +104,7 @@ def upload_file():
 
     return render_template('upload.html')
 
-# Run app
-if __name__ == '__main__':
-    app.run(debug=True)
+# ✅ Render-compatible run command
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
