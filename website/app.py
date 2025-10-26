@@ -9,7 +9,7 @@ app.secret_key = "secret_key"
 # MySQL Config
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = ''
+app.config['MYSQL_PASSWORD'] = 'Khushal@8755'
 app.config['MYSQL_DB'] = 'backend'
 
 mysql = MySQL(app)
@@ -129,3 +129,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
