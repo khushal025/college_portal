@@ -10,31 +10,41 @@
         button { cursor: pointer; background: #1a73e8; color:white; border:none; }
         #student_data pre { background:#e9ecef; padding:10px; border-radius:5px; }
         .upload-btn { margin: 10px 0; }
+        #addStudentForm { display:none; background:white; padding:20px; border-radius:8px; box-shadow:0px 0px 10px #aaa; }
     </style>
 </head>
 <body>
 <header>
-    <h2>Welcome, {{ teacher }}</h2>
+    <h2>Welcome, {{ teacher_name }}</h2>
 </header>
 
 <div class="container">
     <h3>Search Student</h3>
     <input type="text" id="roll_no_search" placeholder="Enter Roll No">
     <button onclick="searchStudent()">Search</button>
-
     <div id="student_data"></div>
 
     <hr>
-    <h3>Upload Data</h3>
-
+    <h3>Upload Excel Data</h3>
     <button onclick="document.getElementById('upload_attendance').click()" class="upload-btn">Upload Attendance</button>
     <input type="file" id="upload_attendance" style="display:none" onchange="uploadFile('attendance', this.files[0])">
 
     <button onclick="document.getElementById('upload_results').click()" class="upload-btn">Upload Results</button>
     <input type="file" id="upload_results" style="display:none" onchange="uploadFile('results', this.files[0])">
 
-    <button onclick="document.getElementById('upload_students').click()" class="upload-btn">+ Add Students</button>
+    <button onclick="document.getElementById('upload_students').click()" class="upload-btn">+ Add Students (Excel)</button>
     <input type="file" id="upload_students" style="display:none" onchange="uploadFile('students', this.files[0])">
+
+    <hr>
+    <button onclick="toggleAddStudent()">+ Add Student (Manual)</button>
+    <div id="addStudentForm">
+        <h4>New Student</h4>
+        <input type="text" id="new_roll" placeholder="Roll No"><br>
+        <input type="text" id="new_name" placeholder="Student Name"><br>
+        <input type="text" id="new_father" placeholder="Father Name"><br>
+        <input type="text" id="new_email" placeholder="Email"><br>
+        <button onclick="addStudent()">Add Student</button>
+    </div>
 </div>
 
 <script>
@@ -66,6 +76,28 @@ function uploadFile(type, file) {
         .then(res => res.json())
         .then(data => alert(data.message))
         .catch(err => alert('Upload failed'));
+}
+
+function toggleAddStudent() {
+    let form = document.getElementById('addStudentForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function addStudent() {
+    let data = {
+        roll_no: document.getElementById('new_roll').value,
+        student_name: document.getElementById('new_name').value,
+        father_name: document.getElementById('new_father').value,
+        email: document.getElementById('new_email').value
+    };
+    fetch('/add_student', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message))
+    .catch(err => alert('Add student failed'));
 }
 </script>
 </body>
