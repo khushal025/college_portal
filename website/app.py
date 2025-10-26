@@ -1,180 +1,145 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import pymysql
+from flask import Flask, render_template, request, jsonify
+import mysql.connector
 import pandas as pd
-import os
 
 app = Flask(__name__)
-app.secret_key = "secret123"
 
-# MySQL connection (PyMySQL)
-conn = pymysql.connect(
-    host="YOUR_DB_HOST",
-    user="YOUR_DB_USER",
-    password="YOUR_DB_PASSWORD",
-    db="backend",
-    charset='utf8mb4',
-    cursorclass=pymysql.cursors.DictCursor
-)
+# --- Database Configuration ---
+db_config = {
+    'host': 'mysql-20a16630-khushalgarg390-4681.c.aivencloud.com',
+    'user': 'avnadmin',
+    'password': 'AVNS_rz2ljygN',
+    'database': 'defaultdb',
+    'port': 11980
+}
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+def get_db_connection():
+    conn = mysql.connector.connect(**db_config)
+    return conn
 
-# ----------------- Routes -----------------
+# --- Routes ---
 
 @app.route('/')
 def index():
-    return redirect('/teacher_login')
+    return "Hello! Server is running."
 
-# ---------- Teacher Login ----------
-@app.route('/teacher_login', methods=['GET', 'POST'])
-def teacher_login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM teachers WHERE email=%s AND password=%s", (email, password))
-            teacher = cursor.fetchone()
-            if teacher:
-                session['teacher'] = teacher['name']
-                return redirect('/teacher_dashboard')
-            else:
-                return "Invalid Credentials"
-    return render_template('teacher_login.html')
-
-# ---------- Teacher Dashboard ----------
 @app.route('/teacher_dashboard')
 def teacher_dashboard():
-    if 'teacher' not in session:
-        return redirect('/teacher_login')
-    return render_template('teacher_dashboard.html', teacher=session['teacher'])
+    teacher_name = "Teacher ABC"  # Example, can fetch from session
+    return render_template('teacher_dashboard.html', teacher_name=teacher_name)
 
-# ---------- API: Get Student Data ----------
+# --- API to get student data ---
 @app.route('/api/get_student_data/<roll_no>')
 def get_student_data(roll_no):
-    with conn.cursor() as cursor:
-        # Students table
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
         cursor.execute("SELECT * FROM students WHERE roll_no=%s", (roll_no,))
         student = cursor.fetchone()
         if not student:
-            return jsonify({"error": "Student not found"})
-
+            return jsonify({'error': 'Student not found'})
+        
         # Attendance
-        cursor.execute("SELECT * FROM attendance WHERE roll_no=%s", (roll_no,))
-        attendance = cursor.fetchone()
+        cursor.execute("SELECT * FROM attendance WHERE student_roll=%s", (roll_no,))
+        attendance = cursor.fetchall()
 
         # Results
-        cursor.execute("SELECT * FROM results WHERE roll_no=%s", (roll_no,))
-        results = cursor.fetchone()
+        cursor.execute("SELECT * FROM results WHERE student_roll=%s", (roll_no,))
+        results = cursor.fetchall()
 
-    return jsonify({"student": list(student.values()),
-                    "attendance": attendance,
-                    "results": results})
+        return jsonify({
+            'student': student,
+            'attendance': attendance,
+            'results': results
+        })
+    finally:
+        cursor.close()
+        conn.close()
 
-# ---------- Upload Attendance ----------
-@app.route('/upload_attendance', methods=['POST'])
-def upload_attendance():
-    if 'file' not in request.files:
-        return jsonify({"message": "No file uploaded"})
-    file = request.files['file']
-    if file.filename == "":
-        return jsonify({"message": "No file selected"})
-
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
+# --- Add single student manually ---
+@app.route('/add_student', methods=['POST'])
+def add_student():
+    data = request.json
+    roll_no = data.get('roll_no')
+    student_name = data.get('student_name')
+    father_name = data.get('father_name')
+    email = data.get('email')
     
-    df = pd.read_excel(filepath)
-    with conn.cursor() as cursor:
-        for _, row in df.iterrows():
-            cursor.execute("""
-                INSERT INTO attendance (roll_no, student_name, father_name, OOPUI, cloud_comp, bi, foai, se, java_script_lab, oopu_script_lab, science_and_society, total_attendance)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON DUPLICATE KEY UPDATE 
-                    student_name=VALUES(student_name),
-                    father_name=VALUES(father_name),
-                    OOPUI=VALUES(OOPUI),
-                    cloud_comp=VALUES(cloud_comp),
-                    bi=VALUES(bi),
-                    foai=VALUES(foai),
-                    se=VALUES(se),
-                    java_script_lab=VALUES(java_script_lab),
-                    oopu_script_lab=VALUES(oopu_script_lab),
-                    science_and_society=VALUES(science_and_society),
-                    total_attendance=VALUES(total_attendance)
-            """, tuple(row))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO students (roll_no, student_name, father_name, email) VALUES (%s, %s, %s, %s)",
+                       (roll_no, student_name, father_name, email))
         conn.commit()
-    return jsonify({"message": "Attendance uploaded successfully"})
+        return jsonify({'message': 'Student added successfully'})
+    except mysql.connector.Error as e:
+        return jsonify({'error': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
 
-# ---------- Upload Results ----------
-@app.route('/upload_results', methods=['POST'])
-def upload_results():
-    if 'file' not in request.files:
-        return jsonify({"message": "No file uploaded"})
-    file = request.files['file']
-    if file.filename == "":
-        return jsonify({"message": "No file selected"})
-
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
-    
-    df = pd.read_excel(filepath)
-    with conn.cursor() as cursor:
-        for _, row in df.iterrows():
-            cursor.execute("""
-                INSERT INTO results (roll_no, student_name, father_name, OOPUI, cloud_comp, bi, foai, se, java_script_lab, oopu_script_lab, science_and_society, sgpa)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON DUPLICATE KEY UPDATE
-                    student_name=VALUES(student_name),
-                    father_name=VALUES(father_name),
-                    OOPUI=VALUES(OOPUI),
-                    cloud_comp=VALUES(cloud_comp),
-                    bi=VALUES(bi),
-                    foai=VALUES(foai),
-                    se=VALUES(se),
-                    java_script_lab=VALUES(java_script_lab),
-                    oopu_script_lab=VALUES(oopu_script_lab),
-                    science_and_society=VALUES(science_and_society),
-                    sgpa=VALUES(sgpa)
-            """, tuple(row))
-        conn.commit()
-    return jsonify({"message": "Results uploaded successfully"})
-
-# ---------- Upload Students ----------
+# --- Upload Excel for bulk students ---
 @app.route('/upload_students', methods=['POST'])
 def upload_students():
-    if 'file' not in request.files:
-        return jsonify({"message": "No file uploaded"})
     file = request.files['file']
-    if file.filename == "":
-        return jsonify({"message": "No file selected"})
-
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
-    
-    df = pd.read_excel(filepath)
-    with conn.cursor() as cursor:
+    df = pd.read_excel(file)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
         for _, row in df.iterrows():
-            cursor.execute("""
-                INSERT INTO students (roll_no, student_name, father_name, course, semester, email, password, profile_photo)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                ON DUPLICATE KEY UPDATE
-                    student_name=VALUES(student_name),
-                    father_name=VALUES(father_name),
-                    course=VALUES(course),
-                    semester=VALUES(semester),
-                    email=VALUES(email),
-                    password=VALUES(password),
-                    profile_photo=VALUES(profile_photo)
-            """, tuple(row))
+            cursor.execute(
+                "INSERT INTO students (roll_no, student_name, father_name, email) VALUES (%s,%s,%s,%s)",
+                (row['roll_no'], row['student_name'], row['father_name'], row['email'])
+            )
         conn.commit()
-    return jsonify({"message": "Students uploaded successfully"})
+        return jsonify({'message': 'Students uploaded successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
 
-# ---------- Logout ----------
-@app.route('/logout')
-def logout():
-    session.pop('teacher', None)
-    return redirect('/teacher_login')
+# --- Upload Attendance ---
+@app.route('/upload_attendance', methods=['POST'])
+def upload_attendance():
+    file = request.files['file']
+    df = pd.read_excel(file)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        for _, row in df.iterrows():
+            cursor.execute(
+                "INSERT INTO attendance (student_roll, date, status) VALUES (%s,%s,%s)",
+                (row['student_roll'], row['date'], row['status'])
+            )
+        conn.commit()
+        return jsonify({'message': 'Attendance uploaded successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
 
-# ---------- Run App ----------
-if __name__ == "__main__":
+# --- Upload Results ---
+@app.route('/upload_results', methods=['POST'])
+def upload_results():
+    file = request.files['file']
+    df = pd.read_excel(file)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        for _, row in df.iterrows():
+            cursor.execute(
+                "INSERT INTO results (student_roll, subject, marks) VALUES (%s,%s,%s)",
+                (row['student_roll'], row['subject'], row['marks'])
+            )
+        conn.commit()
+        return jsonify({'message': 'Results uploaded successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+if __name__ == '__main__':
     app.run(debug=True)
