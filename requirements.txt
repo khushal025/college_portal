@@ -1,9 +1,6 @@
-flask
-PyMySQL
-openpyxl
-flask-cors
-gunicorn
+Flask
 mysql-connector-python
-python-dotenv
 pandas
-werkzeug
+openpyxl
+Flask-Cors
+gunicorn
