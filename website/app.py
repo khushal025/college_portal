@@ -1,110 +1,70 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-from werkzeug.utils import secure_filename
+# app.py
 import os
-import pandas as pd
+from flask import Flask, request, jsonify
 import mysql.connector
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from mysql.connector import Error
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
+app.secret_key = os.environ.get("SESSION_SECRET", "defaultsecret")
 
-# Upload folder config
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'csv'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Ensure upload folder exists
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-# ✅ Safe database connection with error handling
+# MySQL connection setup with SSL
 try:
     db = mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),   # changed from DB_PASS → DB_PASSWORD
-        database=os.getenv("DB_NAME"),
-        port=os.getenv("DB_PORT", 3306)
+        host=os.environ.get("DB_HOST", "mysql-20a16630-khushalgarg390-4681.c.aivencloud.com"),
+        port=int(os.environ.get("DB_PORT", 11980)),
+        user=os.environ.get("DB_USER", "avnadmin"),
+        password=os.environ.get("DB_PASS", "AVNS_rz2ljygN3FXbvS08LOo"),
+        database=os.environ.get("DB_NAME", "defaultdb"),
+        ssl_ca="website/certs/aiven-ca.crt"   # Make sure cert file path correct hai
     )
     cursor = db.cursor(dictionary=True)
     print("✅ Database connected successfully!")
-except mysql.connector.Error as e:
+except Error as e:
     print(f"❌ Database connection failed: {e}")
-    db = None
     cursor = None
 
-# Helper: allowed file types
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# ----------------- API ROUTES -----------------
 
-# ====== ROUTES ======
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/teacher')
-def teacher_dashboard():
-    if not cursor:
-        return "Database not connected!"
-    cursor.execute("SELECT * FROM students")
-    students = cursor.fetchall()
-    return render_template('teacher.html', students=students)
-
-@app.route('/student', methods=['GET', 'POST'])
+@app.route("/api/student_login", methods=["POST"])
 def student_login():
-    if not cursor:
-        return "Database not connected!"
-    if request.method == 'POST':
-        roll_no = request.form.get('roll_no')
-        cursor.execute("SELECT * FROM students WHERE roll_no=%s", (roll_no,))
-        student = cursor.fetchone()
-        if student:
-            return render_template('student_dashboard.html', student=student)
-        else:
-            flash("Invalid Roll Number", "danger")
-            return redirect(url_for('student_login'))
-    return render_template('student_login.html')
+    if cursor is None:
+        return jsonify({"status": "fail", "message": "DB not connected"}), 500
 
-@app.route('/upload', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('No file part', 'danger')
-            return redirect(request.url)
-        file = request.files['file']
-        if file.filename == '':
-            flash('No selected file', 'danger')
-            return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
 
-            try:
-                if filename.endswith(('xlsx', 'xls')):
-                    df = pd.read_excel(filepath)
-                else:
-                    df = pd.read_csv(filepath)
+    cursor.execute(
+        "SELECT * FROM students WHERE username=%s AND password=%s",
+        (username, password)
+    )
+    user = cursor.fetchone()
+    if user:
+        return jsonify({"status": "success", "user": user})
+    return jsonify({"status": "fail"}), 401
 
-                for _, row in df.iterrows():
-                    cursor.execute("""
-                        INSERT INTO students (roll_no, name, marks)
-                        VALUES (%s, %s, %s)
-                        ON DUPLICATE KEY UPDATE name=%s, marks=%s
-                    """, (row['roll_no'], row['name'], row['marks'], row['name'], row['marks']))
-                db.commit()
-                flash('File uploaded and DB updated successfully!', 'success')
-            except Exception as e:
-                flash(f'Error processing file: {e}', 'danger')
-            return redirect(url_for('upload_file'))
 
-    return render_template('upload.html')
+@app.route("/api/teacher_login", methods=["POST"])
+def teacher_login():
+    if cursor is None:
+        return jsonify({"status": "fail", "message": "DB not connected"}), 500
 
-# ✅ Render-compatible run command
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    cursor.execute(
+        "SELECT * FROM teachers WHERE username=%s AND password=%s",
+        (username, password)
+    )
+    user = cursor.fetchone()
+    if user:
+        return jsonify({"status": "success", "user": user})
+    return jsonify({"status": "fail"}), 401
+
+
+# ----------------- RUN FLASK -----------------
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
