@@ -1,4 +1,6 @@
 flask
+PyMySQL
+openpyxl
 flask-cors
 gunicorn
 mysql-connector-python
