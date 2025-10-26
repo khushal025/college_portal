@@ -6,8 +6,8 @@ app = Flask(__name__)
 
 # ---------- MySQL Configuration ----------
 app.config['MYSQL_HOST'] = '127.0.0.1'
-app.config['MYSQL_USER'] = 'root'           # apka MySQL user
-app.config['MYSQL_PASSWORD'] = ''           # apka MySQL password
+app.config['MYSQL_USER'] = 'root'           
+app.config['MYSQL_PASSWORD'] = 'Khushal@8755'         
 app.config['MYSQL_DB'] = 'backend'
 
 mysql = MySQL(app)
@@ -93,4 +93,5 @@ def upload_students():
 # ---------- Run Flask App ----------
 if __name__ == '__main__':
     app.run(debug=True)
+
 
